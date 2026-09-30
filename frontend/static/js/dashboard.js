@@ -30,28 +30,36 @@ async function loadWatchlists() {
     try {
         const watchlists = await api.get('/watchlists/');
         if (watchlists.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-light);padding:20px 0">No watchlists yet. Create one to start tracking stocks!</p>';
+            container.innerHTML = '<p style="color:var(--text-light);padding:20px 0">No watchlists yet. Click <strong>+ New Watchlist</strong> to create one!</p>';
             return;
         }
         container.innerHTML = watchlists.map(wl => `
-            <div class="watchlist-card card" style="margin-bottom:16px">
+            <div class="watchlist-card card" style="margin-bottom:16px; padding:20px;">
                 <div class="flex-between mb-2">
-                    <h4>${wl.name}</h4>
-                    <span class="badge badge-info">${wl.items.length} items</span>
+                    <h4 style="margin:0">${wl.name}</h4>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <span class="badge badge-info">${wl.items.length} stocks</span>
+                        <button class="btn btn-sm btn-outline" onclick="openWatchlistModal(${wl.id})">+ Add Stock</button>
+                    </div>
                 </div>
-                ${wl.items.length === 0 
-                    ? '<p style="color:var(--text-light);font-size:0.85rem">Empty watchlist</p>'
+                ${wl.items.length === 0
+                    ? '<p style="color:var(--text-light);font-size:0.85rem;margin-top:12px">Empty — click Add Stock to start tracking.</p>'
                     : wl.items.map(item => `
-                        <div class="watchlist-item">
+                        <div class="watchlist-item" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-100)">
                             <div>
-                                <a href="/pages/instrument_detail.html?id=${item.instrument_id}" class="instrument-name" style="color:var(--text)">${item.symbol}</a>
+                                <a href="/pages/instrument_detail.html?id=${item.instrument_id}" style="font-weight:600;color:var(--text);text-decoration:none">${item.symbol}</a>
                                 <span style="color:var(--text-light);font-size:0.75rem;margin-left:8px">${item.name}</span>
                             </div>
-                            <div class="instrument-price">
-                                <div class="price">${formatCurrency(item.current_price)}</div>
-                                <div class="change ${item.day_change_pct >= 0 ? 'text-positive' : 'text-negative'}">
-                                    ${item.day_change_pct >= 0 ? '+' : ''}${item.day_change_pct}%
+                            <div style="display:flex;align-items:center;gap:16px">
+                                <div style="text-align:right">
+                                    <div style="font-weight:600">${formatCurrency(item.current_price)}</div>
+                                    <div style="font-size:0.75rem" class="${item.day_change_pct >= 0 ? 'text-positive' : 'text-negative'}">
+                                        ${item.day_change_pct >= 0 ? '+' : ''}${item.day_change_pct}%
+                                    </div>
                                 </div>
+                                <button onclick="removeFromWatchlist(${wl.id}, ${item.item_id})"
+                                    style="background:none;border:none;cursor:pointer;color:var(--text-light);font-size:18px;padding:0 4px;line-height:1"
+                                    title="Remove">&times;</button>
                             </div>
                         </div>
                     `).join('')
@@ -72,6 +80,84 @@ async function createWatchlist() {
         loadWatchlists();
     } catch (e) {
         showToast(e.error || 'Failed to create watchlist', 'error');
+    }
+}
+
+// ── Watchlist Item Management ─────────────────────────────────
+let _wlSearchTimer = null;
+
+function openWatchlistModal(watchlistId) {
+    document.getElementById('wl-target-id').value = watchlistId;
+    document.getElementById('wl-search-input').value = '';
+    document.getElementById('wl-search-results').innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;padding:8px 0">Start typing to search stocks...</p>';
+    document.getElementById('watchlist-add-modal').classList.add('active');
+    setTimeout(() => document.getElementById('wl-search-input').focus(), 100);
+}
+
+function closeWatchlistModal() {
+    document.getElementById('watchlist-add-modal').classList.remove('active');
+}
+
+function searchWatchlistStock(query) {
+    clearTimeout(_wlSearchTimer);
+    const resultsEl = document.getElementById('wl-search-results');
+    if (!query || query.length < 1) {
+        resultsEl.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;padding:8px 0">Start typing to search stocks...</p>';
+        return;
+    }
+    resultsEl.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;padding:8px 0">Searching...</p>';
+    _wlSearchTimer = setTimeout(async () => {
+        try {
+            const results = await api.get('/instruments/search?q=' + encodeURIComponent(query));
+            if (!results || results.length === 0) {
+                resultsEl.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;padding:8px 0">No results found</p>';
+                return;
+            }
+            resultsEl.innerHTML = results.slice(0, 10).map(inst => `
+                <div onclick="addToWatchlist(${inst.id})"
+                    style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;margin-bottom:4px;border:1px solid var(--gray-100)"
+                    onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background=''"
+                >
+                    <div>
+                        <span style="font-weight:700;color:var(--text)">${inst.symbol}</span>
+                        <span style="color:var(--text-light);font-size:0.8rem;margin-left:8px">${inst.name}</span>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-weight:600">${formatCurrency(inst.current_price)}</div>
+                        <div style="font-size:0.75rem" class="${inst.day_change_pct >= 0 ? 'text-positive' : 'text-negative'}">
+                            ${inst.day_change_pct >= 0 ? '+' : ''}${inst.day_change_pct}%
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (e) {
+            resultsEl.innerHTML = '<p style="color:var(--danger);font-size:0.85rem">Search failed</p>';
+        }
+    }, 300);
+}
+
+async function addToWatchlist(instrumentId) {
+    const watchlistId = parseInt(document.getElementById('wl-target-id').value);
+    try {
+        await api.post(`/watchlists/${watchlistId}/items`, { instrument_id: instrumentId });
+        showToast('Stock added to watchlist!', 'success');
+        closeWatchlistModal();
+        loadWatchlists();
+    } catch (e) {
+        showToast(e.error || 'Failed to add stock', 'error');
+    }
+}
+
+async function removeFromWatchlist(watchlistId, itemId) {
+    try {
+        await fetch(`/api/watchlists/${watchlistId}/items/${itemId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+        });
+        showToast('Stock removed from watchlist', 'info');
+        loadWatchlists();
+    } catch (e) {
+        showToast('Failed to remove stock', 'error');
     }
 }
 

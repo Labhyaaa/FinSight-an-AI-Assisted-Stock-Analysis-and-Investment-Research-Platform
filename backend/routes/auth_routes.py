@@ -90,11 +90,16 @@ def register():
     create_otp(user["id"], otp_code, Config.OTP_EXPIRY_MINUTES)
     send_otp_email(email, otp_code)
 
-    return jsonify({
+    response = {
         "message": "Registration successful. Check your email for OTP.",
         "user_id": user["id"],
         "email": email,
-    }), 201
+    }
+    # In DEBUG mode, expose OTP directly so it can be shown on the page
+    if Config.DEBUG:
+        response["dev_otp"] = otp_code
+
+    return jsonify(response), 201
 
 
 # ══════════════════════════════════════════════════════════════
@@ -249,7 +254,10 @@ def resend_otp():
     contact = user.get("email") or identifier
     send_login_otp(contact, otp_code, method)
 
-    return jsonify({"message": "OTP resent"})
+    response = {"message": "OTP resent"}
+    if Config.DEBUG:
+        response["dev_otp"] = otp_code
+    return jsonify(response)
 
 
 # ══════════════════════════════════════════════════════════════

@@ -102,3 +102,9 @@ input[type="range"]::-webkit-slider-thumb:hover {
 @media (max-width: 768px) {
     .calc-layout { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 480px) {
+    .calc-result-values { grid-template-columns: 1fr; gap: 12px; }
+    .calc-form, .calc-result { padding: 20px; }
+    .calc-chart-container { height: 220px; }
+}

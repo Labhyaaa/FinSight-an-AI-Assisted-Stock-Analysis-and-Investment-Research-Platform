@@ -227,10 +227,15 @@ if (signupForm) {
         signupEmail = email;
 
         try {
-            await api.post('/auth/register', { name, email, password });
-            showToast('Account created! Check email for OTP.', 'success');
+            const data = await api.post('/auth/register', { name, email, password });
+            showToast('Account created! Enter the OTP to verify.', 'success');
             document.getElementById('step-register').classList.remove('active');
             document.getElementById('step-otp').classList.add('active');
+
+            // Show dev OTP banner if server returned the code (DEBUG mode)
+            if (data.dev_otp) {
+                showDevOtp(data.dev_otp);
+            }
         } catch (err) {
             showToast(err.error || 'Registration failed', 'error');
         }
@@ -258,11 +263,34 @@ if (signupForm) {
         resendBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             try {
-                await api.post('/auth/resend-otp', { identifier: signupEmail });
+                const data = await api.post('/auth/resend-otp', { identifier: signupEmail });
                 showToast('OTP resent!', 'info');
+                if (data && data.dev_otp) showDevOtp(data.dev_otp);
             } catch (err) {
                 showToast(err.error || 'Failed to resend', 'error');
             }
         });
     }
 }
+
+// ── Dev OTP helpers ──────────────────────────────────────────
+function showDevOtp(otp) {
+    const banner = document.getElementById('dev-otp-banner');
+    const codeEl = document.getElementById('dev-otp-code');
+    if (!banner || !codeEl) return;
+    codeEl.textContent = otp;
+    banner.classList.add('visible');
+    // Auto-fill the input
+    const input = document.getElementById('otp-input');
+    if (input) input.value = otp;
+}
+
+window.copyOtp = function(el) {
+    const otp = el.textContent;
+    const input = document.getElementById('otp-input');
+    if (input) {
+        input.value = otp;
+        input.focus();
+        showToast('OTP auto-filled!', 'success');
+    }
+};

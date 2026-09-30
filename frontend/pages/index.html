@@ -394,6 +394,11 @@
             .hero-title { font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -1px; }
             .section { padding: 80px 0; }
         }
+        @media (max-width: 480px) {
+            .stats-grid, .market-grid { grid-template-columns: 1fr; }
+            .hero-buttons { flex-direction: column; width: 100%; padding: 0 16px; }
+            .hero-buttons .btn { width: 100%; }
+        }
     </style>
 </head>
 <body>

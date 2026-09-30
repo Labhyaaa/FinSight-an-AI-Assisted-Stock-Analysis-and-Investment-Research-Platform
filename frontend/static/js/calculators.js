@@ -273,7 +273,18 @@ function chartOptions() {
         },
         scales: {
             x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { size: 10 } } }
+            y: { 
+                grid: { color: 'rgba(0,0,0,0.05)' }, 
+                ticks: { 
+                    font: { size: 10 },
+                    callback: function(value) {
+                        if (value >= 10000000) return '₹' + (value / 10000000).toFixed(1).replace(/\.0$/, '') + 'Cr';
+                        if (value >= 100000) return '₹' + (value / 100000).toFixed(1).replace(/\.0$/, '') + 'L';
+                        if (value >= 1000) return '₹' + (value / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+                        return '₹' + value;
+                    }
+                } 
+            }
         }
     };
 }

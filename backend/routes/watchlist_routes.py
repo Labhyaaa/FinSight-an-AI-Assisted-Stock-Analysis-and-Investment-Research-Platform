@@ -89,13 +89,30 @@ def add():
     from app import auth_required
     @auth_required
     def _inner():
-        data = request.get_json()
-        result = add_position(
-            g.user_id,
-            data["instrument_id"],
-            data["quantity"],
-            data["buy_price"],
-            data["buy_date"],
-        )
+        data = request.get_json() or {}
+        instrument_id = data.get("instrument_id")
+        quantity      = data.get("quantity")
+        buy_price     = data.get("buy_price")
+        buy_date      = data.get("buy_date")
+
+        # Validate required fields
+        if not instrument_id:
+            return jsonify({"error": "instrument_id is required"}), 400
+        if quantity is None or quantity == "":
+            return jsonify({"error": "quantity is required"}), 400
+        if buy_price is None or buy_price == "":
+            return jsonify({"error": "buy_price is required"}), 400
+        try:
+            quantity  = float(quantity)
+            buy_price = float(buy_price)
+            instrument_id = int(instrument_id)
+        except (TypeError, ValueError):
+            return jsonify({"error": "quantity and buy_price must be numbers"}), 400
+        if quantity <= 0:
+            return jsonify({"error": "quantity must be greater than 0"}), 400
+        if buy_price <= 0:
+            return jsonify({"error": "buy_price must be greater than 0"}), 400
+
+        result = add_position(g.user_id, instrument_id, quantity, buy_price, buy_date)
         return jsonify(result), 201
     return _inner()

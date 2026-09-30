@@ -440,6 +440,7 @@ tr:hover td { background: var(--cyan-dim); }
 @media (max-width: 768px) {
     :root { --fs-4xl: 1.75rem; --fs-3xl: 1.5rem; }
     .container { padding: 0 16px; }
+    .card { padding: 16px; }
 }
 
 /* ── Glow Card Utility ────────────────────────────────────── */

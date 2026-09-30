@@ -79,6 +79,16 @@ _USERS = [
         "income_range": "1000000", "occupation": "student",
         "fathers_name": "sunil kumar gupta"
     },
+    {
+        "id": 5, "email": "b241236@skit.ac.in", "name": "Labhya Sharma",
+        "password_hash": "labhya123",
+        "role": "user", "is_active": True, "is_email_verified": True,
+        "age": 20, "country": "India", "risk_profile": "Moderate",
+        "experience_level": "Beginner",
+        "monthly_investment_capacity": 10000, "yearly_investment_capacity": 120000,
+        "goals": "Wealth creation",
+        "created_at": "2026-09-14T00:00:00Z", "updated_at": None,
+    },
 ]
 
 # ── Instruments (imported from generated data) ───────────────
@@ -530,13 +540,25 @@ def portfolio_get_positions(user_id):
         inst = instrument_get(p["instrument_id"])
         if not inst:
             continue
-        unrealized_pl = round((inst["current_price"] - p["buy_price"]) * p["quantity"], 2)
-        return_pct = round(((inst["current_price"] - p["buy_price"]) / p["buy_price"]) * 100, 2) if p["buy_price"] > 0 else 0
+        # Guard against None/invalid values
+        quantity = p.get("quantity") or 0
+        buy_price = p.get("buy_price") or 0
+        current_price = inst.get("current_price") or 0
+        try:
+            quantity = float(quantity)
+            buy_price = float(buy_price)
+            current_price = float(current_price)
+        except (TypeError, ValueError):
+            continue
+        if quantity <= 0:
+            continue
+        unrealized_pl = round((current_price - buy_price) * quantity, 2)
+        return_pct = round(((current_price - buy_price) / buy_price) * 100, 2) if buy_price > 0 else 0
         result.append({
-            "id": p["id"], "quantity": p["quantity"], "buy_price": p["buy_price"],
+            "id": p["id"], "quantity": quantity, "buy_price": buy_price,
             "buy_date": p["buy_date"], "instrument_id": inst["id"],
             "symbol": inst["symbol"], "name": inst["name"],
-            "current_price": inst["current_price"],
+            "current_price": current_price,
             "unrealized_pl": unrealized_pl, "return_pct": return_pct,
         })
     return result
@@ -545,10 +567,11 @@ def portfolio_get_positions(user_id):
 def portfolio_add_position(user_id, instrument_id, quantity, buy_price, buy_date):
     pid = _next_id("positions")
     _POSITIONS.append({
-        "id": pid, "user_id": user_id, "instrument_id": instrument_id,
-        "quantity": quantity, "buy_price": buy_price, "buy_date": buy_date,
+        "id": pid, "user_id": user_id, "instrument_id": int(instrument_id),
+        "quantity": float(quantity), "buy_price": float(buy_price),
+        "buy_date": buy_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
     })
-    return {"id": pid}
+    return {"id": pid, "message": "Position added"}
 
 
 # ── Chat functions ───────────────────────────────────────────

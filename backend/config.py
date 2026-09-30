@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 
 # Load .env from project root or backend dir
+
 _backend_dir = os.path.dirname(os.path.abspath(__file__))
 _project_root = os.path.dirname(_backend_dir)
 load_dotenv(os.path.join(_project_root, ".env"))

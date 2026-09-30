@@ -15,11 +15,18 @@ except ImportError:
 
 def get_cursor():
     """Return a RealDictCursor for the current Flask request."""
-    if not _HAS_PSYCOPG2:
-        raise RuntimeError("psycopg2 is not installed - database features unavailable")
+    if not _HAS_PSYCOPG2 or not g.get("db"):
+        raise RuntimeError("Database connection not available")
     return g.db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
 
 def use_db():
-    """Return True if PostgreSQL is available and should be used."""
-    return _HAS_PSYCOPG2
+    """Return True if PostgreSQL is available and actively connected."""
+    if not _HAS_PSYCOPG2:
+        return False
+    try:
+        from app import get_db
+        return get_db() is not None
+    except Exception:
+        return False
+
